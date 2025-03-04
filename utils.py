@@ -15,6 +15,7 @@ import shutil
 import re
 import urllib.parse
 import settings
+import time
 from requests.exceptions import SSLError
 
 
@@ -39,17 +40,17 @@ def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True,
     while retry_count < settings.HTTP_MAX_RETRIES:
         try:
             response = requests.get(request_url, auth=auth, headers=headers, verify=verify_peer_certificate, proxies=proxies)
-            break
-        except (ConnectionResetError, ConnectionError, SSLError):
+            if 200 == response.status_code:
+                return response.json()
+            else:
+                raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason,
+                                                                         request_url))
+        except (ConnectionResetError, ConnectionError, requests.exceptions.ConnectionError, SSLError) as e:
             retry_count += 1
-            print(f"Connection reset, retrying ({retry_count}/{settings.HTTP_MAX_RETRIES})...")
+            print(f"Connection error on requesting <{request_url}>, retrying ({retry_count}/{settings.HTTP_MAX_RETRIES})...")
             if retry_count == settings.HTTP_MAX_RETRIES:
-                raise
-    if 200 == response.status_code:
-        return response.json()
-    else:
-        raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason,
-                                                                     request_url))
+                raise ConfluenceException(f'Max retries ({settings.HTTP_MAX_RETRIES}) reached: {str(e)}')
+            time.sleep(1)  # Add a small delay between retries
 
 
 def http_download_binary_file(request_url, file_path, auth=None, headers=None, verify_peer_certificate=True,
@@ -69,22 +70,23 @@ def http_download_binary_file(request_url, file_path, auth=None, headers=None, v
         try:
             response = requests.get(request_url, stream=True, auth=auth, headers=headers, verify=verify_peer_certificate,
                                     proxies=proxies)
-            break
-        except (ConnectionResetError, ConnectionError, SSLError):
+            if 200 == response.status_code:
+                with open(file_path, 'wb') as downloaded_file:
+                    response.raw.decode_content = True
+                    try:
+                        shutil.copyfileobj(response.raw, downloaded_file)
+                    except:
+                        downloaded_file.write("could not copy file")
+                return
+            else:
+                raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason,
+                                                                         request_url))
+        except (ConnectionResetError, ConnectionError, requests.exceptions.ConnectionError, SSLError) as e:
             retry_count += 1
-            print(f"Connection reset, retrying ({retry_count}/{settings.HTTP_MAX_RETRIES})...")
+            print(f"Connection error on requesting <{request_url}>, retrying ({retry_count}/{settings.HTTP_MAX_RETRIES})...")
             if retry_count == settings.HTTP_MAX_RETRIES:
-                raise
-    if 200 == response.status_code:
-        with open(file_path, 'wb') as downloaded_file:
-            response.raw.decode_content = True
-            try:
-                shutil.copyfileobj(response.raw, downloaded_file)
-            except:
-                downloaded_file.write("could not copy file")
-    else:
-        raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason,
-                                                                     request_url))
+                raise ConfluenceException(f'Max retries ({settings.HTTP_MAX_RETRIES}) reached: {str(e)}')
+            time.sleep(1)  # Add a small delay between retries
 
 
 def write_2_file(path, content):

@@ -230,6 +230,13 @@ def download_attachment(download_url, download_folder, attachment_id, attachment
     downloaded_file_name = derive_downloaded_file_name(clean_url)
     downloaded_file_name = provide_unique_file_name(attachment_duplicate_file_names, attachment_file_matching,
                                                     downloaded_file_name)
+
+    downloaded_file_path = '%s/%s' % (download_folder, downloaded_file_name)
+
+    if settings.SKIP_EXISTING_ATTACHMENTS and os.path.exists(downloaded_file_path):
+        print('%sSKIPPING: %s (already exists)' % ('\t'*(depth+1), downloaded_file_name))
+        return {'file_name': downloaded_file_name, 'file_path': downloaded_file_path}
+
     downloaded_file_path = download_file(download_url, download_folder, downloaded_file_name, depth=depth)
 
     # Download the thumbnail as well if the attachment is an image
@@ -427,10 +434,11 @@ def main():
 
     # Welcome output
     print_welcome_output()
-    # Delete old export
-    if os.path.exists(settings.EXPORT_FOLDER):
+    # Delete old export if not skipping existing attachments
+    if os.path.exists(settings.EXPORT_FOLDER) and not settings.SKIP_EXISTING_ATTACHMENTS:
         shutil.rmtree(settings.EXPORT_FOLDER)
-    os.makedirs(settings.EXPORT_FOLDER)
+
+    os.makedirs(settings.EXPORT_FOLDER, exist_ok=True)
 
     # Read HTML template
     template_file = open(settings.TEMPLATE_FILE)
@@ -468,9 +476,9 @@ def main():
         space_folder_name = provide_unique_file_name(duplicate_space_names, space_matching, space, is_folder=True)
         space_folder = '%s/%s' % (settings.EXPORT_FOLDER, space_folder_name)
         try:
-            os.makedirs(space_folder)
+            os.makedirs(space_folder, exist_ok=True)
             download_folder = '%s/%s' % (space_folder, settings.DOWNLOAD_SUB_FOLDER)
-            os.makedirs(download_folder)
+            os.makedirs(download_folder, exist_ok=True)
 
             space_url = '%s/rest/api/space/%s?expand=homepage' % (settings.CONFLUENCE_BASE_URL, space)
             response = utils.http_get(space_url, auth=settings.HTTP_AUTHENTICATION,
@@ -496,11 +504,13 @@ def main():
                 utils.write_html_2_file(space_index_path, space_index_title, space_index_content, html_template)
         except utils.ConfluenceException as e:
             error_print('ERROR: %s' % e)
+            sys.exit(1)
         except OSError as e:
             import traceback
             print(f'OS Error has encountered while exporting {space}: {e}')
             print('Stacktrace:')
             print(traceback.format_exc())
+            sys.exit(1)
 
     # Finished output
     print_finished_output()

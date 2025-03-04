@@ -46,3 +46,5 @@ CONFLUENCE_GENERATED_PREVIEW_FORMATS = ['pdf']
 
 # The following message is displayed for page forwardings
 HTML_FORWARD_MESSAGE = '<a href="%s">If you are not automatically forwarded to %s, please click here!</a>'
+
+SKIP_EXISTING_ATTACHMENTS = True
