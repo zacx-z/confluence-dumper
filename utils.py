@@ -14,6 +14,8 @@ import requests
 import shutil
 import re
 import urllib.parse
+import settings
+from requests.exceptions import SSLError
 
 
 class ConfluenceException(Exception):
@@ -33,7 +35,16 @@ def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True,
     :returns: JSON response.
     :raises: ConfluenceException in the case of the server does not answer HTTP code 200.
     """
-    response = requests.get(request_url, auth=auth, headers=headers, verify=verify_peer_certificate, proxies=proxies)
+    retry_count = 0
+    while retry_count < settings.HTTP_MAX_RETRIES:
+        try:
+            response = requests.get(request_url, auth=auth, headers=headers, verify=verify_peer_certificate, proxies=proxies)
+            break
+        except (ConnectionResetError, ConnectionError, SSLError):
+            retry_count += 1
+            print(f"Connection reset, retrying ({retry_count}/{settings.HTTP_MAX_RETRIES})...")
+            if retry_count == settings.HTTP_MAX_RETRIES:
+                raise
     if 200 == response.status_code:
         return response.json()
     else:
@@ -53,8 +64,17 @@ def http_download_binary_file(request_url, file_path, auth=None, headers=None, v
     :param proxies: (optional) Dictionary mapping protocol to the URL of the proxy.
     :raises: ConfluenceException in the case of the server does not answer with HTTP code 200.
     """
-    response = requests.get(request_url, stream=True, auth=auth, headers=headers, verify=verify_peer_certificate,
-                            proxies=proxies)
+    retry_count = 0
+    while retry_count < settings.HTTP_MAX_RETRIES:
+        try:
+            response = requests.get(request_url, stream=True, auth=auth, headers=headers, verify=verify_peer_certificate,
+                                    proxies=proxies)
+            break
+        except (ConnectionResetError, ConnectionError, SSLError):
+            retry_count += 1
+            print(f"Connection reset, retrying ({retry_count}/{settings.HTTP_MAX_RETRIES})...")
+            if retry_count == settings.HTTP_MAX_RETRIES:
+                raise
     if 200 == response.status_code:
         with open(file_path, 'wb') as downloaded_file:
             response.raw.decode_content = True
@@ -75,9 +95,9 @@ def write_2_file(path, content):
     """
     try:
         with open(path, 'w') as the_file:
-            the_file.write(content.encode('utf8'))
+            the_file.write(content)
     except:
-        print("File could not be written")
+        print(f"File could not be written: {e}")
 
 def write_html_2_file(path, title, content, html_template, additional_headers=None):
     """ Writes HTML content to a file using a template.

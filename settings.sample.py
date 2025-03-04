@@ -20,6 +20,8 @@ SPACES_TO_EXPORT = []
 # Example for HTTP Basic Authentication: ('johndoe', 'sup3rs3cur3pw')
 HTTP_AUTHENTICATION = ('johndoe', 'sup3rs3cur3pw')
 
+HTTP_MAX_RETRIES = 5
+
 # Verify x.509 certificate of confluence http server
 VERIFY_PEER_CERTIFICATE = True
 

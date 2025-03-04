@@ -496,9 +496,11 @@ def main():
                 utils.write_html_2_file(space_index_path, space_index_title, space_index_content, html_template)
         except utils.ConfluenceException as e:
             error_print('ERROR: %s' % e)
-        except OSError:
-            print('WARNING: The space %s has been exported already. Maybe you mentioned it twice in the settings'
-                  % space)
+        except OSError as e:
+            import traceback
+            print(f'OS Error has encountered while exporting {space}: {e}')
+            print('Stacktrace:')
+            print(traceback.format_exc())
 
     # Finished output
     print_finished_output()
