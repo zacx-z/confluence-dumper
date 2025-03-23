@@ -20,7 +20,9 @@ SPACES_TO_EXPORT = []
 # Example for HTTP Basic Authentication: ('johndoe', 'sup3rs3cur3pw')
 HTTP_AUTHENTICATION = ('johndoe', 'sup3rs3cur3pw')
 
-HTTP_MAX_RETRIES = 5
+# Maximum number of retries for HTTP requests
+# Useful for handling temporary network issues or server hiccups
+HTTP_MAX_RETRIES = 8
 
 # Verify x.509 certificate of confluence http server
 VERIFY_PEER_CERTIFICATE = True
@@ -47,4 +49,7 @@ CONFLUENCE_GENERATED_PREVIEW_FORMATS = ['pdf']
 # The following message is displayed for page forwardings
 HTML_FORWARD_MESSAGE = '<a href="%s">If you are not automatically forwarded to %s, please click here!</a>'
 
+# Skip downloading attachments that already exist locally
+# Set to True to skip downloading attachments that already exist in the target folder
+# Set to False to always download attachments, overwriting existing files
 SKIP_EXISTING_ATTACHMENTS = True
